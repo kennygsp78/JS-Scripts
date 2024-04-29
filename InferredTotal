@@ -1,0 +1,118 @@
+// ==UserScript==
+// @name         InferredTotal
+// @namespace    http://tampermonkey.net/
+// @version      V1
+// @description  Summarizes the amount of inferred time an Associate has
+// @author       kgsp - Kenneth Perez
+// @match        https://fclm-portal.amazon.com/employee/*
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=amazon.com
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    //This block creates the banner the information will be displayed on
+    var banner = document.createElement("div");
+    banner.className = "b";
+    banner.style.fontSize = "medium";
+    banner.style.color = "white";
+    banner.style.backgroundColor = "black";
+    banner.style.textAlign = "center";
+    banner.style.borderColor = "black";
+    banner.style.borderStyle = "solid";
+    banner.style.padding = "5px";
+    banner.style.fontWeight = 700;
+    document.body.insertBefore(banner, document.body.firstChild);
+
+    // This variable will hold the total inferred seconds
+    var totalSeconds = 0;
+    var hours2 = 0;
+    var minutes2 = 0;
+    var seconds2 = 0;
+
+    // This selects rows only with the indirect class
+    var inferredrows = document.querySelectorAll('tr.function-seg.indirect:not(.timeOffTask)');
+
+    // This loop will search for the tr with the total amount of time in the indirect td
+    inferredrows.forEach(row => {
+        var cell = row.querySelector('td.rightAlign');
+
+        // Extracts the content of the cell
+        var timeString = cell.textContent.trim();
+
+        // Parse the timeString into minutes and seconds
+        var timeParts = timeString.split(':');
+
+        if (timeParts.length === 2) { // Ensure proper format MM:SS
+            var minutes = parseInt(timeParts[0], 10);
+            var seconds = parseInt(timeParts[1], 10);
+
+            // Check if parsing was successful - log to console for errors
+            if (!isNaN(minutes) && !isNaN(seconds)) {
+                totalSeconds += minutes * 60 + seconds; // Convert MM:SS to seconds
+            } else {
+                console.error('Invalid time format:', timeString);
+            }
+        } else {
+            console.error('Invalid time format:', timeString);
+        }
+    });
+
+    // Select rows representing time off task
+    var timeOffTaskRows = document.querySelectorAll('tr.function-seg.indirect.timeOffTask');
+
+    // Calculate total time off task
+    timeOffTaskRows.forEach(row => {
+    var cell = row.querySelector('td.rightAlign');
+
+    // Extract the content of the cell
+    var timeString = cell.textContent.trim();
+
+    // Parse the timeString into hours, minutes, and seconds
+    var timeParts = timeString.split(':');
+
+    if (timeParts.length >= 2 && timeParts.length <= 3) { // Ensure proper format HH:MM or HH:MM:SS
+        var hours = 0;
+        var minutes = parseInt(timeParts[0], 10);
+        var seconds = parseInt(timeParts[1], 10);
+
+        if (timeParts.length === 3) {
+            hours = parseInt(timeParts[0], 10);
+            minutes = parseInt(timeParts[1], 10);
+            seconds = parseInt(timeParts[2], 10);
+        }
+
+        // Check if parsing was successful
+        if (!isNaN(hours) && !isNaN(minutes) && !isNaN(seconds)) {
+            hours2 += hours;
+            minutes2 += minutes;
+            seconds2 += seconds;
+
+            // Adjust minutes and seconds if they exceed 60
+            if (seconds2 >= 60) {
+                minutes2 += Math.floor(seconds2 / 60);
+                seconds2 %= 60;
+            }
+            if (minutes2 >= 60) {
+                hours2 += Math.floor(minutes2 / 60);
+                minutes2 %= 60;
+            }
+        } else {
+            console.error('Invalid time format:', timeString);
+        }
+    } else {
+        console.error('Invalid time format:', timeString);
+    }
+});
+
+    // Convert totalSeconds to hours, minutes, and seconds for inferred time
+    var hours = Math.floor(totalSeconds / 3600);
+    var remainingSeconds = totalSeconds % 3600;
+    var minutes = Math.floor(remainingSeconds / 60);
+    var seconds = remainingSeconds % 60;
+
+    // displays to the banner
+    banner.innerHTML = "<strong>Total Inferred Time: " + hours + " hours " + minutes + " minutes " + seconds + " seconds</strong> <br/> <strong>Total Time Off Task: " + hours2 + " hours " + minutes2 + " minutes " + seconds2 + " seconds</strong>";
+
+})();
